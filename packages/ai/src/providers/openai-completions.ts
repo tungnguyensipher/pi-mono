@@ -75,6 +75,16 @@ export interface OpenAICompletionsOptions extends StreamOptions {
 	reasoningEffort?: "minimal" | "low" | "medium" | "high" | "xhigh";
 }
 
+function resolveBaseUrl(model: Model<"openai-completions">): string {
+	if (model.provider === "openai") {
+		const envBaseUrl = process.env.OPENAI_BASE_URL?.trim();
+		if (envBaseUrl) {
+			return envBaseUrl;
+		}
+	}
+	return model.baseUrl;
+}
+
 export const streamOpenAICompletions: StreamFunction<"openai-completions", OpenAICompletionsOptions> = (
 	model: Model<"openai-completions">,
 	context: Context,
@@ -83,6 +93,8 @@ export const streamOpenAICompletions: StreamFunction<"openai-completions", OpenA
 	const stream = new AssistantMessageEventStream();
 
 	(async () => {
+		const resolvedModel: Model<"openai-completions"> = { ...model, baseUrl: resolveBaseUrl(model) };
+
 		const output: AssistantMessage = {
 			role: "assistant",
 			content: [],
@@ -103,8 +115,8 @@ export const streamOpenAICompletions: StreamFunction<"openai-completions", OpenA
 
 		try {
 			const apiKey = options?.apiKey || getEnvApiKey(model.provider) || "";
-			const client = createClient(model, context, apiKey, options?.headers);
-			const params = buildParams(model, context, options);
+			const client = createClient(resolvedModel, context, apiKey, options?.headers);
+			const params = buildParams(resolvedModel, context, options);
 			options?.onPayload?.(params);
 			const openaiStream = await client.chat.completions.create(params, { signal: options?.signal });
 			stream.push({ type: "start", partial: output });
@@ -164,7 +176,7 @@ export const streamOpenAICompletions: StreamFunction<"openai-completions", OpenA
 							total: 0,
 						},
 					};
-					calculateCost(model, output.usage);
+					calculateCost(resolvedModel, output.usage);
 				}
 
 				const choice = chunk.choices?.[0];

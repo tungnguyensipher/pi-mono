@@ -55,6 +55,16 @@ export interface OpenAIResponsesOptions extends StreamOptions {
 	serviceTier?: ResponseCreateParamsStreaming["service_tier"];
 }
 
+function resolveBaseUrl(model: Model<"openai-responses">): string {
+	if (model.provider === "openai") {
+		const envBaseUrl = process.env.OPENAI_BASE_URL?.trim();
+		if (envBaseUrl) {
+			return envBaseUrl;
+		}
+	}
+	return model.baseUrl;
+}
+
 /**
  * Generate function for OpenAI Responses API
  */
@@ -67,6 +77,8 @@ export const streamOpenAIResponses: StreamFunction<"openai-responses", OpenAIRes
 
 	// Start async processing
 	(async () => {
+		const resolvedModel: Model<"openai-responses"> = { ...model, baseUrl: resolveBaseUrl(model) };
+
 		const output: AssistantMessage = {
 			role: "assistant",
 			content: [],
@@ -88,8 +100,8 @@ export const streamOpenAIResponses: StreamFunction<"openai-responses", OpenAIRes
 		try {
 			// Create OpenAI client
 			const apiKey = options?.apiKey || getEnvApiKey(model.provider) || "";
-			const client = createClient(model, context, apiKey, options?.headers);
-			const params = buildParams(model, context, options);
+			const client = createClient(resolvedModel, context, apiKey, options?.headers);
+			const params = buildParams(resolvedModel, context, options);
 			options?.onPayload?.(params);
 			const openaiStream = await client.responses.create(
 				params,
@@ -97,7 +109,7 @@ export const streamOpenAIResponses: StreamFunction<"openai-responses", OpenAIRes
 			);
 			stream.push({ type: "start", partial: output });
 
-			await processResponsesStream(openaiStream, output, stream, model, {
+			await processResponsesStream(openaiStream, output, stream, resolvedModel, {
 				serviceTier: options?.serviceTier,
 				applyServiceTierPricing,
 			});

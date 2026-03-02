@@ -19,6 +19,7 @@ if [[ "$NO_ENV" == "true" ]]; then
   unset ANTHROPIC_API_KEY
   unset ANTHROPIC_OAUTH_TOKEN
   unset OPENAI_API_KEY
+  unset OPENAI_BASE_URL
   unset GEMINI_API_KEY
   unset GROQ_API_KEY
   unset CEREBRAS_API_KEY
@@ -53,4 +54,4 @@ if [[ "$NO_ENV" == "true" ]]; then
   echo "Running without API keys..."
 fi
 
-npx tsx "$SCRIPT_DIR/packages/coding-agent/src/cli.ts" ${ARGS[@]+"${ARGS[@]}"}
+bun "$SCRIPT_DIR/packages/coding-agent/src/cli.ts" ${ARGS[@]+"${ARGS[@]}"}
